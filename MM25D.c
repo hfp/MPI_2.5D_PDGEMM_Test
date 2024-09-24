@@ -18,7 +18,7 @@ MPI_Request reqs[N_DUP], reqs0[N_DUP];
 int spos[N_DUP + 1], blklen[N_DUP];
 int row_spos[N_DUP + 1], row_blklen[N_DUP];
 
-void duplicate_comms(MPI_Comm dup_comm, int nrow, int ncol)
+static void duplicate_comms(MPI_Comm dup_comm, int nrow, int ncol)
 {    
     int remainder  = nrow % N_DUP;
     int block_size = nrow / N_DUP;
@@ -43,7 +43,7 @@ void duplicate_comms(MPI_Comm dup_comm, int nrow, int ncol)
 }
 
 
-void MM25D_Cannon_steps(
+static void MM25D_Cannon_steps(
     int i, int j, int k, int nproc_ij, int c, 
     int n_local, int local_bs,
     double *A, double *B, double *A0, double *B0, double *C,

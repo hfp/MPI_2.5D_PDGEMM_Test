@@ -1,6 +1,13 @@
+#include <stddef.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include <math.h>
+#include <mpi.h>
+#include <mkl.h>
 
 // Factor nproc = c * nproc_ij * nproc_ij where c is a factor of nproc_ij
-void get_nproc_ij_c(int argc, char **argv, int *_nproc, int *_my_rank, int *_c, int *_nproc_ij)
+static void get_nproc_ij_c(int argc, char **argv, int *_nproc, int *_my_rank, int *_c, int *_nproc_ij)
 {
     int my_rank, nproc;
     int c, nproc_ij, succ = 1;
@@ -11,9 +18,9 @@ void get_nproc_ij_c(int argc, char **argv, int *_nproc, int *_my_rank, int *_c, 
     if (argc > 2) 
     {
         c = atoi(argv[2]);
-        nproc_ij = (int) sqrt(nproc / c);
+        nproc_ij = (int) fmax(sqrt(nproc / c), 1.0);
     } else {
-        nproc_ij = (int) sqrt(nproc / 2);
+        nproc_ij = (int) fmax(sqrt(nproc / 2), 1.0);
         c = nproc / (nproc_ij * nproc_ij);
     }
     
@@ -50,7 +57,7 @@ void get_nproc_ij_c(int argc, char **argv, int *_nproc, int *_my_rank, int *_c, 
     *_nproc_ij = nproc_ij;
 }
 
-int get_problem_size(int argc, char **argv, int nproc_ij, int my_rank) 
+static int get_problem_size(int argc, char **argv, int nproc_ij, int my_rank) 
 {
     int n = nproc_ij; 
     if(argc > 1) 
@@ -68,7 +75,7 @@ int get_problem_size(int argc, char **argv, int nproc_ij, int my_rank)
 }
 
 // An elegant by abstracted way: https://stackoverflow.com/questions/9269399/sending-blocks-of-2d-array-in-c-using-mpi/9271753#9271753
-void init_subarrtype(
+static void init_subarrtype(
     int root, int my_rank, int n, int nproc_ij, int n_local,
     MPI_Datatype* subarrtype_addr, int *sendcounts, int *displs
 ) 
@@ -97,7 +104,7 @@ void init_subarrtype(
     }
 }
 
-void initial_matrix(double **A_addr, double **B_addr, double **C_addr, int m, int n, int k) 
+static void initial_matrix(double **A_addr, double **B_addr, double **C_addr, int m, int n, int k) 
 {
     double* A = (double *) mkl_malloc(m * k * sizeof(double), 16);
     double* B = (double *) mkl_malloc(n * k * sizeof(double), 16);
@@ -112,7 +119,7 @@ void initial_matrix(double **A_addr, double **B_addr, double **C_addr, int m, in
     for (int i = 0; i < k * n; i++) B[i] = (double) rand() / RMAX;
 }
 
-int check_result(double *A, double *B, double *C, int m, int n, int k) 
+static int check_result(double *A, double *B, double *C, int m, int n, int k) 
 {
     int err_counts = 0;
     double *C_ref = (double *) mkl_malloc(m * n * sizeof(double), 16);
@@ -130,7 +137,7 @@ int check_result(double *A, double *B, double *C, int m, int n, int k)
     return err_counts;
 }
 
-void scatter_data(
+static void scatter_data(
     int root, int my_rank, int my_plane, int n, int nproc_ij, int local_bs,
     MPI_Comm plane_comm, int *sendcounts, int *displs, MPI_Datatype subarrtype,
     double *A, double *B, double *M, double *N
@@ -151,7 +158,7 @@ void scatter_data(
     }
 }
 
-void gather_result(
+static void gather_result(
     int root, int my_rank, int my_plane, int n, int nproc_ij, int local_bs,
     MPI_Comm plane_comm, int *sendcounts,  int *displs, MPI_Datatype subarrtype,
     double *C, double *M, double *N, double *P
@@ -179,4 +186,3 @@ void gather_result(
         mkl_free(P);
     }
 }
-
